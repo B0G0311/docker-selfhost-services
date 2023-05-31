@@ -3,7 +3,7 @@ About
 
 [![](https://github.com/BaptisteBdn/docker-selfhosted-apps/raw/main/_utilities/jellyfin.png)](https://github.com/BaptisteBdn/docker-selfhosted-apps/blob/main/_utilities/jellyfin.png)
 
-Summary of service
+This stack uses Jellyfin to manage your media library implementing a media player and ebook reader as well as many other features. Jellyseerr is a request management service that works along with the services in the organizarr-stack to pull the correct files.
 
 [Jellyfin](#root/80USfCAGrCMG)
 
