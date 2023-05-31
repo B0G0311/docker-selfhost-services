@@ -198,7 +198,7 @@ Before using the docker-compose file, please update the following configurations
   sed -i -e "s/example.com/'$DOMAIN'.'$TLD'/g" traefik.yml 
 ```
 
-**change the dns provider credentials** : Replace the provider name in `traefik.yml` if you are not using Cloudflare. Replace the environment variables in `.env` and in `docker-compose.yml`. The example uses OVH but it can work with other providers, such as Cloudflare :
+**change the dns provider credentials** : Replace the provider name in `traefik.yml` if you are not using Cloudflare. Replace the environment variables in `.env` and in `docker-compose.yml`. The example uses Cloudflare but it can work with other providers, such as OVH :
 
 *   Get the [required settings](https://go-acme.github.io/lego/dns/godaddy/) and update the `.env` file
 *   This is the only case where you are going to have to modify the docker-compose
