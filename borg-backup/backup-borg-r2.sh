@@ -20,11 +20,11 @@ notify() {
 EXCLUDES_FILE=$(dirname $0)/excludes.txt
 
 # Step 1: Stop all running docker containers to ensure uncorrupted files
-notify "** Stopping docker containers... **"
+echo -e "\n** Stopping docker containers... **"
 docker stop $(docker ps -q)
 
 # Step 2: Create local borg backup
-notify "Starting backup"
+echo "Starting backup"
 borg create --compression lzma,6 \
     --exclude-from ${EXCLUDES_FILE} \
     $BORG_REPO::$(date +%Y-%m-%d-%H-%M-%S) \
@@ -34,33 +34,33 @@ if [ ${PIPESTATUS[0]} -ne 0 ]; then
     notify "Backup failed with error: $(tail -n1 /tmp/borg.log)"
     exit 1
 fi
-notify "Backup completed successfully"
+echo "Backup completed successfully"
 
 # Step 3: Prune old backups (keep the most up-to-date daily, weekly, and monthly backups)
-notify "Pruning old backups"
+echo "Pruning old backups"
 borg prune --keep-daily 7 --keep-weekly 4 --keep-monthly 6 $BORG_REPO \
     2>&1 | tee /tmp/borg.log
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
-    notify "Pruning failed with error: $(tail -n1 /tmp/borg.log)"
+    echo "Pruning failed with error: $(tail -n1 /tmp/borg.log)"
     exit 1
 fi
 notify "Pruning completed successfully"
 
-# Step 4: Synchronize the local backup to the AWS bucket using rclone
-notify "Starting sync to AWS bucket"
+# Step 4: Synchronize the local backup to the R2 bucket using rclone
+echo "Starting sync to R2 bucket"
 rclone sync $BORG_REPO cloudflare_r2:$CLOUDFLARE_R2_BUCKET_NAME \
     --transfers 4 \
     --retries 5 \
-    --config /root/.config/rclone/rclone.conf \
+    --config /root/.config/rclone/rclone.conf \ #Replace /root/ 
     --log-file /tmp/rclone.log
 if [ $? -ne 0 ]; then
-    notify "Sync failed with error: $(tail -n1 /tmp/rclone.log)"
+    echo "Sync failed with error: $(tail -n1 /tmp/rclone.log)"
     exit 1
 fi
-notify "Sync completed successfully"
+echo "Sync completed successfully"
 
 # Step 5: Start all docker containers
-notify "** Restarting docker containers... **"
+echo -e "/n** Restarting docker containers... **"
 docker start $(docker ps -a -q)
 
 # Final notification
