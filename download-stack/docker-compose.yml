@@ -1,0 +1,67 @@
+version: "3"
+
+services:
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./prowlarr:/config
+    ports:
+      - 9696:9696
+    networks:
+      - proxy
+    labels:
+      - "traefik.docker.network=proxy"
+      - "traefik.enable=true"
+      - "traefik.http.routers.prowlarr.entrypoints=https"
+      - "traefik.http.routers.prowlarr.rule=Host(`${TRAEFIK_PROWLARR}`)"
+      - "traefik.http.routers.prowlarr.tls=true"
+      - "traefik.http.routers.prowlarr.tls.certresolver=mydnschallenge"
+      - "com.centurylinklabs.watchtower.enable=true"
+    restart: unless-stopped
+
+  qbittorrent:
+    image: dyonr/qbittorrentvpn:rc_2_0
+    container_name: qbittorrent
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    environment:
+      - VPN_ENABLED=yes
+      - VPN_TYPE=openvpn
+      - LAN_NETWORK=192.168.1.0/24 #,172.20.0.0/16
+      - VPN_USERNAME=${PVPN_USERNAME}
+      - VPN_PASSWORD=${PVPN_PASSWORD}
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - ./qbittorrent/config:/config
+      - ./qbittorrent/downloads:/downloads
+    ports:
+      - 8080:8080
+      - 8999:8999
+      - 8999:8999/udp
+    networks:
+      - proxy
+    labels:
+      - "traefik.docker.network=proxy"
+      - "traefik.enable=true"
+      - "traefik.http.services.qbittorrent.loadbalancer.server.port=8080"
+      - "traefik.http.routers.qbittorrent.entrypoints=https"
+      - "traefik.http.routers.qbittorrent.rule=Host(`${TRAEFIK_QBIT}`)"
+      - "traefik.http.routers.qbittorrent.tls=true"
+      - "traefik.http.routers.qbittorrent.tls.certresolver=mydnschallenge"
+      - "com.centurylinklabs.watchtower.enable=true"
+    restart: unless-stopped
+
+networks:
+  proxy:
+    external: true
+    name: proxy
+
+    

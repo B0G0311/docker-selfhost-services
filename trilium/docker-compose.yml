@@ -1,0 +1,23 @@
+services:
+ trilium:
+    image: 'zadam/trilium:latest'
+    container_name: trilium
+    restart: unless-stopped
+    volumes:
+      - "./data:/home/node/trilium-data"
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.webserver.rule=Host(`${TRAEFIK_TRILIUM}`)"
+      - "traefik.http.routers.webserver.entrypoints=https"
+      - "traefik.http.routers.webserver.tls=true"
+      - "traefik.http.routers.webserver.tls.certresolver=mydnschallenge"
+      # Watchtower Update
+      - "com.centurylinklabs.watchtower.enable=true"
+      # Ip filtering
+      - "traefik.http.routers.bitwarden.middlewares=whitelist@file"
+
+networks:
+  proxy:
+    external: true

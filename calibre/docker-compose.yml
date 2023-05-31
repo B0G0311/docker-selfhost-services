@@ -1,0 +1,36 @@
+version: "3"
+
+services:
+  calibre:
+    image: lscr.io/linuxserver/calibre
+    container_name: calibre
+    restart: unless-stopped
+    security_opt:
+      - seccomp:unconfined
+    ports:
+      - 1069:8080
+    volumes:
+      - ./config:/config
+      - /path/to/media/books:/imports
+    environment:
+      - PGID=${PGID}
+      - PUID=${PUID}
+      - TZ=${TZ}
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"  
+      - "traefik.docker.network=proxy" 
+      - "traefik.http.services.calibre.loadbalancer.server.port=8081" 
+      - "traefik.http.routers.calibre.rule=Host(`${TRAEFIK_CALIBRE}`)" 
+      - "traefik.http.routers.calibre.entrypoints=https" 
+      - "traefik.http.routers.calibre.tls=true" 
+      - "traefik.http.routers.calibre.tls.certresolver=mydnschallenge"  
+      # Watchtower Update 
+      - "com.centurylinklabs.watchtower.enable=true" 
+      # Ip filtering 
+      - "traefik.http.routers.calibre.middlewares=whitelist@file"
+      
+networks:
+  proxy:
+    external: true

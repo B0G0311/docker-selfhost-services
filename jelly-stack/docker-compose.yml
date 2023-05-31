@@ -1,0 +1,57 @@
+version: "2.1"
+
+services:
+  jellyfin:
+    image: linuxserver/jellyfin
+    container_name: jellyfin
+    networks:
+      - proxy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./jellyfin:/config
+      - /path/to/media/tvshows:/data/tvshows
+      - /path/to/media/movies:/data/movies
+      - /path/to/media/anime:/data/anime
+      - /path/to/media/books:/data/books
+      - /path/to/media/music:/data/music
+      - /path/to/media/pictures:/data/pictures
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyfin.rule=Host(`${TRAEFIK_JELLYFIN}`)"
+      - "traefik.http.routers.jellyfin.entrypoints=https"
+      - "traefik.http.routers.jellyfin.tls=true"
+      - "traefik.http.routers.jellyfin.tls.certresolver=mydnschallenge"
+      # Watchtower Update
+      - "com.centurylinklabs.watchtower.enable=true"
+      # Ip filtering
+      - "traefik.http.routers.jellyfin.middlewares=whitelist@file"
+    restart: unless-stopped
+
+  jellyseerr:
+    image: fallenbagel/jellyseerr:develop
+    container_name: jellyseerr
+    networks:
+      - proxy
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL}
+      - TZ=${TZ}
+    volumes:
+      - ./jellyseerr:/app/config
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyseerr.rule=Host(`${TRAEFIK_JELLYSEERR}`)"
+      - "traefik.http.routers.jellyseerr.entrypoints=https"
+      - "traefik.http.routers.jellyseerr.tls=true"
+      - "traefik.http.routers.jellyseerr.tls.certresolver=mydnschallenge"
+      # Watchtower Update
+      - "com.centurylinklabs.watchtower.enable=true"
+      # Ip filtering
+      - "traefik.http.routers.jellyseerr.middlewares=whitelist@file"
+    restart: unless-stopped
+
+networks: 
+  proxy: 
+    external: true

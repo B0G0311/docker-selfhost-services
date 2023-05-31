@@ -1,0 +1,109 @@
+version: "3"
+
+services:
+  unbound:
+    image: klutchell/unbound:latest
+    container_name: unbound
+    restart: unless-stopped
+    hostname: unbound
+    volumes:
+      - ./unbound:/etc/unbound/custom.conf.d
+    networks:
+      private_network:
+        ipv4_address: 10.2.0.200
+    healthcheck:
+      test: ["CMD", "dig", "-p", "53", "dnssec.works", "@127.0.0.1"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+      start_period: 30s
+    labels:
+      # Watchtower Update
+      - "com.centurylinklabs.watchtower.enable=true"
+
+
+  pihole:
+    depends_on: [unbound]
+    container_name: pihole
+    image: pihole/pihole:latest
+    restart: unless-stopped
+    hostname: pihole
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "1080:80/tcp"
+    dns:
+      - 127.0.0.1
+      - 10.2.0.200 # Points to unbound
+    environment:
+      TZ: ${TZ}
+      WEBPASSWORD: ${WEBPASSWORD} # Blank password - Can be whatever you want.
+      ServerIP: 10.1.0.150 # Internal IP of pihole
+      DNS1: 10.2.0.200 # Unbound IP
+      DNS2: 10.2.0.200 # If we don't specify two, it will auto pick google.
+    # Volumes store your data between container upgrades
+    volumes:
+      - "./pihole/etc-pihole/:/etc/pihole/"
+      - "./pihole/etc-dnsmasq.d/:/etc/dnsmasq.d/"
+    # Recommended but not required (DHCP needs NET_ADMIN)
+    #   https://github.com/pi-hole/docker-pi-hole#note-on-capabilities
+    cap_add:
+      - NET_ADMIN
+    networks:
+      proxy:
+      private_network:
+        ipv4_address: 10.2.0.100
+     
+    labels:
+      # Watchtower Update
+      - "com.centurylinklabs.watchtower.monitor-only=true"
+      
+  
+  wireguard:
+    depends_on: [unbound, pihole]
+    image: linuxserver/wireguard
+    container_name: wireguard
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID={$PUID}
+      - PGID={$PGID}
+      - TZ={$TZ}
+      - SERVERURL={$SERVERURL}
+      - PEERS={$PEERS}
+    volumes:
+      - ./wireguard/config:/config
+      - /lib/modules:/lib/modules
+    ports:
+      - "51820:51820/udp"
+    dns:
+      - 10.2.0.100 # Points to pihole
+      - 10.2.0.200 # Points to unbound
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    networks:
+      private_network:
+        ipv4_address: 10.2.0.150
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.wireguard.rule=Host(`${SERVERURL}`)"
+      - "traefik.http.routers.wireguard.entrypoints=https"
+      - "traefik.http.routers.wireguard.tls=true"
+      - "traefik.http.routers.wireguard.tls.certresolver=mydnschallenge"
+      - "traefik.http.services.wireguard.loadbalancer.server.port=51820"
+      # Watchtower Update
+      - "com.centurylinklabs.watchtower.enable=true"
+      # Ip filtering
+      - "traefik.http.routers.wireguard.middlewares=whitelist@file"
+
+networks:
+  proxy:
+    external: true
+  private_network:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.2.0.0/24
